@@ -41,8 +41,13 @@ double compute_objective(double weight[][3][2], int num_labels) {
 }
 
 int main(int argc, char** argv) {
+    if(argc != 2) {
+        fprintf(stdout, "USAGE: %s iterations < train > model\n", argv[0]);
+        exit(1);
+    }
     vector<Example> examples;
     unordered_map<int32_t, Feature> features;
+    unordered_map<string, int> labels;
     int num_labels = 0;
     int buffer_size = 1024;
     char* buffer = (char*) malloc(buffer_size);
@@ -60,7 +65,14 @@ int main(int argc, char** argv) {
         double value;
         for(i = 0; token != NULL; token = strtok(NULL, " \t:\n\r"), i++) {
             if(i == 0) {
-                label = strtol(token, NULL, 10);
+                string label_str(token);
+                unordered_map<string, int>::iterator found = labels.find(label_str);
+                if(found == labels.end()) {
+                    label = (int) labels.size();
+                    labels[label_str] = label;
+                } else {
+                    label = (*found).second;
+                }
                 if(label >= num_labels) num_labels = label + 1;
             } else if(i % 2 == 1) {
                 id = strtol(token, NULL, 10);
@@ -94,16 +106,26 @@ int main(int argc, char** argv) {
         sort(item->second.index.begin(), item->second.index.end(), comparator);
     }
 
-    for(int iteration = 0; iteration < 10; iteration++) {
+    for(unordered_map<string, int>::iterator label = labels.begin(); label != labels.end(); label++) {
+        if(label != labels.begin()) fprintf(stdout, " ");
+        fprintf(stdout, "%s:%d", (*label).first.c_str(), (*label).second);
+    }
+    fprintf(stdout, "\n");
+    int num_iterations = strtol(argv[1], NULL, 10);
+    fprintf(stderr, "examples:%zd features:%zd labels:%d iterations:%d\n", examples.size(), features.size(), num_labels, num_iterations);
+    for(int iteration = 0; iteration < num_iterations; iteration++) {
         double min = 0;
         int32_t argmin = -1;
         double argmin_threshold = -1;
         double argmin_weight[num_labels][3][2] ;
         int num = 0;
+        char is_known[examples.size()];
         for(unordered_map<int32_t, Feature>::iterator item = features.begin(); item != features.end(); item++) {
-            unordered_set<int32_t> is_known;
+            memset(is_known, 0, sizeof(is_known));
+            //unordered_set<int32_t> is_known;
             for(vector< pair<int32_t, double> >::iterator value = item->second.index.begin(); value != item->second.index.end(); value++) {
-                is_known.insert((*value).first);
+                //is_known.insert((*value).first);
+                is_known[(*value).first] = 1;
             }
             double weight[num_labels][3][2];
             for(int label = 0; label < num_labels; label++) {
@@ -111,7 +133,8 @@ int main(int argc, char** argv) {
             }
             // initialize weights
             for(int32_t i = 0; i < (int32_t) examples.size(); i++) {
-                if(is_known.find(i) != is_known.end()) {
+                //if(is_known.find(i) != is_known.end()) {
+                if(is_known[i] != 0) {
                     Example example = examples[i];
                     for(int label = 0; label < num_labels; label++) {
                         if(label == example.label) weight[label][2][1] += example.weight[label];
@@ -119,16 +142,24 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            double objective = compute_objective(weight, num_labels);
+            //fprintf(stderr, "OBJ: %d %g %g\n", item->first, -DBL_MAX, objective);
+            if(objective < min || argmin == -1) {
+                min = objective;
+                argmin = item->first;
+                argmin_threshold = -DBL_MAX;
+                memcpy(argmin_weight, weight, sizeof(argmin_weight));
+            }
             // try all possible thresholds
-            double previous_value = -DBL_MAX; //(*item->second.index.begin()).second;
+            double previous_value = (*item->second.index.begin()).second;
             for(vector< pair<int32_t, double> >::iterator value = item->second.index.begin(); value != item->second.index.end(); value++) {
                 if((*value).second > previous_value) {
                     double objective = compute_objective(weight, num_labels);
-                    //fprintf(stdout, "OBJ: %d %g %g\n", item->first, (*value).second, objective);
+                    //fprintf(stderr, "OBJ: %d %g %g\n", item->first, (*value).second, objective);
                     if(objective < min || argmin == -1) {
                         min = objective;
                         argmin = item->first;
-                        argmin_threshold = (*value).second;
+                        argmin_threshold = ((*value).second + previous_value) / 2;
                         memcpy(argmin_weight, weight, sizeof(argmin_weight));
                     }
                 }
@@ -141,13 +172,10 @@ int main(int argc, char** argv) {
                 }
                 previous_value = (*value).second;
             }
-            /*if(num % (features.size() / 100 + 1) == 0) {
-                fprintf(stderr, "\r%d %d:%g %g", (*item).first, argmin, argmin_threshold, min);
-                fflush(stderr);
-            }*/
             num++;
         }
         fprintf(stdout, "%d %d %g %g\n", iteration, argmin, argmin_threshold, min);
+        fprintf(stderr, "iteration:%d feature:%d threshold:%g min-objective:%g\n", iteration, argmin, argmin_threshold, min);
         // compute classifier weights
         double classifier[num_labels][3];
         double epsilon = 0.5 / (num_labels * examples.size());
@@ -159,11 +187,12 @@ int main(int argc, char** argv) {
         for(int label = 0; label < num_labels; label ++) fprintf(stdout, "%g ", classifier[label][0]); fprintf(stdout, "\n");
         for(int label = 0; label < num_labels; label ++) fprintf(stdout, "%g ", classifier[label][1]); fprintf(stdout, "\n");
         for(int label = 0; label < num_labels; label ++) fprintf(stdout, "%g ", classifier[label][2]); fprintf(stdout, "\n");
+        fprintf(stdout, "\n");
         // apply classifier and update weights
         Feature feature = (*features.find(argmin)).second;
-        unordered_set<int32_t> is_known;
+        unordered_set<int32_t> known_value;
         for(vector< pair<int32_t, double> >::iterator value = feature.index.begin(); value != feature.index.end(); value++) {
-            is_known.insert((*value).first);
+            known_value.insert((*value).first);
             Example example = examples[(*value).first];
             if((*value).second < argmin_threshold) {
                 for(int label = 0; label < num_labels; label++) {
@@ -186,7 +215,7 @@ int main(int argc, char** argv) {
         double norm = 0;
         for(int i = 0; i < (int) examples.size(); i++) {
             Example example = examples[i];
-            if(is_known.find(i) == is_known.end()) {
+            if(known_value.find(i) == known_value.end()) {
                 for(int label = 0; label < num_labels; label++) {
                     example.score[label] += classifier[label][0];
                     if(fabs(classifier[label][0]) > 1e-11) {
@@ -203,4 +232,5 @@ int main(int argc, char** argv) {
         }
         // update weights
     }
+    return 0;
 }
