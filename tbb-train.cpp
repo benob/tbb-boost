@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "examples:%zd features:%zd labels:%d iterations:%d\n", examples.size(), features.size(), num_labels, num_iterations);
     for(int iteration = 0; iteration < num_iterations; iteration++) {
         MinimizeObjective minimizer(num_labels, examples, features);
-        parallel_reduce(blocked_range<int>(0, features.size(), 1), minimizer, auto_partitioner());
+        parallel_reduce(blocked_range<int>(0, features.size()), minimizer, auto_partitioner());
         double min = minimizer.min;
         int32_t argmin = minimizer.argmin;
         double argmin_threshold = minimizer.argmin_threshold;
