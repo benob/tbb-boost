@@ -1,0 +1,33 @@
+tbb-boost, by Benoit Favre <benoit.favre@lif.univ-mrs.fr> (c) 2010
+
+This program implements the scored-text classifier from Boostexter. It supports
+the lib_svm file format for examples (one example per line, the label followed
+by couples of feature_id, value separated by a colon).
+
+label1 id1:value1 id2:value2 id3:value3
+label2 id4:value4 id5:value5
+...
+
+Building:
+
+install the intel thread building blocks (tbb) and a recent version of gcc
+(that supports c++0x) then run make.
+
+Training:
+./train iterations < examples > model
+./train 1000 < 165/train > 165.model
+
+Predict labels:
+./predict model < examples > predictions
+./predict 165.model < 165/test > 165.predictions
+
+The file formats are compatible with http://mlcomp.org.
+
+Parallel training:
+
+On multicore machines, training can be parallelized by using tbb-train in place
+of train.  At the moment, the evaluation of weak classifiers is parallelized at
+the feature level, so don't expect large gain unless you have very long
+iterations over a large enough set of features balanced between examples.
+
+This program is distributed under the GPL v3+ license.
