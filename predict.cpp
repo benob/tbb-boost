@@ -41,32 +41,33 @@ int main(int argc, char** argv) {
             fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin);
         }
         char* token = strtok(buffer, " \t:\n\r");
-        vector<double> values;
+        vector<const char*> values;
         for(;token != NULL; token = strtok(NULL, " \t:\n\r")) {
-            values.push_back(strtod(token, NULL));
+            values.push_back(token); //strtod(token, NULL));
         }
         if(state == 0) {
-            for(int label = 0; label < values.size(); label++) {
-                labels.push_back(string(values[label]));
+            labels.resize(values.size() / 2);
+            for(int label = 0; label < (int) values.size(); label+= 2) {
+                labels[strtol(values[label + 1], NULL, 10)] = values[label];
             }
+            num_labels = labels.size();
             state = 1;
         } else if(state == 1) {
-            classifier.feature = (int) values[1];
-            classifier.threshold = values[2];
+            classifier.feature = strtol(values[1], NULL, 10);
+            classifier.threshold = strtod(values[2], NULL);
             state = 2;
         } else if(state == 2) {
-            if(num_labels < (int) values.size()) num_labels = values.size();
             classifier.weight = new double*[num_labels];
             for(int label = 0; label < num_labels; label++) {
                 classifier.weight[label] = new double[3];
-                classifier.weight[label][0] = values[label];
+                classifier.weight[label][0] = strtod(values[label], NULL);
             }
             state = 3;
         } else if(state == 3) {
-            for(int label = 0; label < num_labels; label++) classifier.weight[label][1] = values[label];
+            for(int label = 0; label < num_labels; label++) classifier.weight[label][1] = strtod(values[label], NULL);
             state = 4;
         } else if(state == 4) {
-            for(int label = 0; label < num_labels; label++) classifier.weight[label][2] = values[label];
+            for(int label = 0; label < num_labels; label++) classifier.weight[label][2] = strtod(values[label], NULL);
             unordered_map<int, vector<Classifier> >::iterator found = classifiers.find(classifier.feature);
             if(found == classifiers.end()) {
                 classifiers[classifier.feature] = vector<Classifier>();
@@ -124,7 +125,7 @@ int main(int argc, char** argv) {
                 max = score[label];
             }
         }
-        fprintf(stdout, "%d\n", argmax + 1);
+        fprintf(stdout, "%s\n", labels[argmax].c_str());
     }
     free(buffer);
     return 0;
