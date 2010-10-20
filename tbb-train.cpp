@@ -53,7 +53,7 @@ bool comparator(const pair<int32_t, double>& a, const pair<int32_t, double>& b)
       return a.second < b.second;
 }
 
-double compute_objective(double weight[][3][2], int num_labels) {
+double compute_objective(const double weight[][3][2], const int num_labels) {
     double output = 0;
     for(int label = 0; label < num_labels; label++) {
         double w0 = weight[label][0][1] * weight[label][0][0]; if(w0 > 0) output += sqrt(w0);
@@ -64,8 +64,8 @@ double compute_objective(double weight[][3][2], int num_labels) {
 }
 
 class MinimizeObjective {
-    vector<Example> examples;
-    vector<Feature> features;
+    vector<Example> const* examples;
+    vector<Feature> const* features;
     vector<bool> is_known;
     int num_labels;
 public:
@@ -73,7 +73,7 @@ public:
     int32_t argmin;
     double argmin_threshold;
     double (*argmin_weight)[3][2];
-    MinimizeObjective(int num_labels, vector<Example> &examples, vector<Feature> &features) {
+    MinimizeObjective(int num_labels, vector<Example> const* examples, vector<Feature> const* features) {
         this->num_labels = num_labels;
         this->examples = examples;
         this->features = features;
@@ -94,10 +94,10 @@ public:
     }
     void operator() (const blocked_range<int>& feature_range) {
         for(int id = feature_range.begin(); id != feature_range.end(); id++) {
-            Feature feature = features[id];
+            Feature feature = (*features)[id];
 
             //memset(is_known, 0, sizeof(is_known));
-            is_known.assign(examples.size(), false);
+            is_known.assign(examples->size(), false);
             //unordered_set<int32_t> is_known;
             for(vector< pair<int32_t, double> >::iterator value = feature.index.begin(); value != feature.index.end(); value++) {
                 //is_known.insert((*value).first);
@@ -108,9 +108,9 @@ public:
                 weight[label][0][0] = weight[label][0][1] = weight[label][1][0] = weight[label][1][1] = weight[label][2][0] = weight[label][2][1] = 0;
             }
             // initialize weights
-            for(int32_t i = 0; i < (int32_t) examples.size(); i++) {
+            for(int32_t i = 0; i < (int32_t) examples->size(); i++) {
                 //if(is_known.find(i) != is_known.end()) {
-                Example example = examples[i];
+                Example example = (*examples)[i];
                 for(int label = 0; label < num_labels; label++) {
                     if(is_known[i]) {
                         if(label == example.label) weight[label][2][1] += example.weight[label];
@@ -142,7 +142,7 @@ public:
                         memcpy(argmin_weight, weight, sizeof(double) * num_labels * 2 * 3);
                     }
                 }
-                Example example = examples[(*value).first];
+                const Example example = (*examples)[(*value).first];
                 for(int label = 0; label < num_labels; label++) {
                     if(label == example.label) weight[label][1][1] += example.weight[label];
                     else weight[label][1][0] += example.weight[label];
@@ -152,7 +152,7 @@ public:
                 previous_value = (*value).second;
             }
         }
-        //fprintf(stderr, "RANGE: %d->%d (%d), min=%g argmin=%d\n", feature_range.begin(), feature_range.end(), features.size(), min, argmin);
+        //fprintf(stderr, "RANGE: %d->%d (%d), min=%g argmin=%d\n", feature_range.begin(), feature_range.end(), features->size(), min, argmin);
     }
     void join(const MinimizeObjective& other) {
         if(other.min < min || argmin == -1) {
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
     int num_iterations = strtol(argv[1], NULL, 10);
     fprintf(stderr, "examples:%zd features:%zd labels:%d iterations:%d\n", examples.size(), features.size(), num_labels, num_iterations);
     for(int iteration = 0; iteration < num_iterations; iteration++) {
-        MinimizeObjective minimizer(num_labels, examples, features);
+        MinimizeObjective minimizer(num_labels, &examples, &features);
         parallel_reduce(blocked_range<int>(0, features.size()), minimizer, auto_partitioner());
         double min = minimizer.min;
         int32_t argmin = minimizer.argmin;
@@ -254,71 +254,6 @@ int main(int argc, char** argv) {
         double argmin_weight[num_labels][3][2];
         memcpy(argmin_weight, minimizer.argmin_weight, num_labels * 3 * 2 * sizeof(double));
 
-        /*double min = 0;
-        int32_t argmin = -1;
-        double argmin_threshold = -1;
-        double argmin_weight[num_labels][3][2] ;
-        int num = 0;
-        //bool is_known[examples.size()];
-        vector<bool> is_known(examples.size());
-        for(vector<Feature>::iterator item = features.begin(); item != features.end(); item++) {
-            //memset(is_known, 0, sizeof(is_known));
-            is_known.assign(examples.size(), false);
-            //unordered_set<int32_t> is_known;
-            for(vector< pair<int32_t, double> >::iterator value = (*item).index.begin(); value != (*item).index.end(); value++) {
-                //is_known.insert((*value).first);
-                is_known[(*value).first] = true;
-            }
-            double weight[num_labels][3][2];
-            for(int label = 0; label < num_labels; label++) {
-                weight[label][0][0] = weight[label][0][1] = weight[label][1][0] = weight[label][1][1] = weight[label][2][0] = weight[label][2][1] = 0;
-            }
-            // initialize weights
-            for(int32_t i = 0; i < (int32_t) examples.size(); i++) {
-                //if(is_known.find(i) != is_known.end()) {
-                Example example = examples[i];
-                for(int label = 0; label < num_labels; label++) {
-                    if(is_known[i]) {
-                        if(label == example.label) weight[label][2][1] += example.weight[label];
-                        else weight[label][2][0] += example.weight[label];
-                    } else {
-                        if(label == example.label) weight[label][0][1] += example.weight[label];
-                        else weight[label][0][0] += example.weight[label];
-                    }
-                }
-            }
-            double objective = compute_objective(weight, num_labels);
-            //fprintf(stderr, "OBJ: %d %g %g\n", (*item).id, -DBL_MAX, objective);
-            if(objective < min || argmin == -1) {
-                min = objective;
-                argmin = (*item).id;
-                argmin_threshold = -DBL_MAX;
-                memcpy(argmin_weight, weight, sizeof(argmin_weight));
-            }
-            // try all possible thresholds
-            double previous_value = (*(*item).index.begin()).second;
-            for(vector< pair<int32_t, double> >::iterator value = (*item).index.begin(); value != (*item).index.end(); value++) {
-                if((*value).second > previous_value) {
-                    double objective = compute_objective(weight, num_labels);
-                    //fprintf(stderr, "OBJ: %d %g %g\n", (*item).id, (*value).second, objective);
-                    if(objective < min || argmin == -1) {
-                        min = objective;
-                        argmin = (*item).id;
-                        argmin_threshold = ((*value).second + previous_value) / 2;
-                        memcpy(argmin_weight, weight, sizeof(argmin_weight));
-                    }
-                }
-                Example example = examples[(*value).first];
-                for(int label = 0; label < num_labels; label++) {
-                    if(label == example.label) weight[label][1][1] += example.weight[label];
-                    else weight[label][1][0] += example.weight[label];
-                    if(label == example.label) weight[label][2][1] -= example.weight[label];
-                    else weight[label][2][0] -= example.weight[label];
-                }
-                previous_value = (*value).second;
-            }
-            num++;
-        }*/
         fprintf(stdout, "%d %d %g %g\n", iteration, argmin, argmin_threshold, min);
         fprintf(stderr, "iteration:%d feature:%d threshold:%g min-objective:%g\n", iteration, argmin, argmin_threshold, min);
         // compute classifier weights

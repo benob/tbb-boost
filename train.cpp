@@ -49,7 +49,7 @@ bool comparator(const pair<int32_t, double>& a, const pair<int32_t, double>& b)
       return a.second < b.second;
 }
 
-double compute_objective(double weight[][3][2], int num_labels) {
+double compute_objective(const double weight[][3][2], const int num_labels) {
     double output = 0;
     for(int label = 0; label < num_labels; label++) {
         double w0 = weight[label][0][1] * weight[label][0][0]; if(w0 > 0) output += sqrt(w0);
