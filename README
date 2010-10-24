@@ -30,4 +30,9 @@ of train.  At the moment, the evaluation of weak classifiers is parallelized at
 the feature level, so don't expect large gain unless you have very long
 iterations over a large enough set of features balanced between examples.
 
+Parallel predictions:
+
+tbb-predict is a naive parallel implementation: it loads all test examples in
+memory and then processes them in parallel.
+
 This program is distributed under the GPL v3+ license.
