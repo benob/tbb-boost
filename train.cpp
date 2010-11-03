@@ -76,9 +76,10 @@ int main(int argc, char** argv) {
         while(buffer[strlen(buffer) - 1] != '\n') {
             buffer_size *= 2;
             buffer = (char*) realloc(buffer, buffer_size);
-            fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin);
+            if(NULL == fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin)) break;
         }
         char* token = strtok(buffer, " \t:\n\r");
+        if(token[0] == '\0') continue;
         int i;
         int label = 0;
         string name;
