@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
         while(buffer[strlen(buffer) - 1] != '\n') {
             buffer_size *= 2;
             buffer = (char*) realloc(buffer, buffer_size);
-            fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin);
+            if(fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin) == NULL) break;
         }
         lines.push_back(strdup(buffer));
     }
