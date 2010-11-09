@@ -255,8 +255,8 @@ int main(int argc, char** argv) {
         double argmin_weight[num_labels][3][2];
         memcpy(argmin_weight, minimizer.argmin_weight, num_labels * 3 * 2 * sizeof(double));
 
-        fprintf(stdout, "%d %d %g %g\n", iteration, argmin, argmin_threshold, min);
-        fprintf(stderr, "iteration:%d feature:%d threshold:%g min-objective:%g\n", iteration, argmin, argmin_threshold, min);
+        fprintf(stdout, "%d %s %g %g\n", iteration, features[argmin].name, argmin_threshold, min);
+        fprintf(stderr, "iteration:%d feature:%s threshold:%g min-objective:%g\n", iteration, features[argmin].name, argmin_threshold, min);
         // compute classifier weights
         double classifier[num_labels][3];
         double epsilon = 0.5 / (num_labels * examples.size());
