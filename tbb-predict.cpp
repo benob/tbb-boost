@@ -31,20 +31,20 @@ using namespace tbb;
 
 class Classifier {
 public:
-    int feature;
+    string feature;
     double threshold;
     double** weight;
 };
 
 class ExampleProcessor {
     int num_labels;
-    unordered_map<int, vector<Classifier> > const *classifiers;
+    unordered_map<string, vector<Classifier> > const *classifiers;
     double const *default_score;
     vector<char*> *lines;
     int *output;
     //double *score;
 public:
-    ExampleProcessor(int num_labels, unordered_map<int, vector<Classifier> > const *classifiers, double const * default_score, vector<char*> *lines, int* output) {
+    ExampleProcessor(int num_labels, unordered_map<string, vector<Classifier> > const *classifiers, double const * default_score, vector<char*> *lines, int* output) {
         this->num_labels = num_labels;
         this->classifiers = classifiers;
         this->default_score = default_score;
@@ -63,16 +63,16 @@ public:
             char* token = strtok_r((*lines)[line], " \t:\n\r", &save_pointer);
             double score[num_labels];
             memcpy(score, default_score, sizeof(double) * num_labels);
-            int feature = 0;
+            string feature;
             double value = 0;
             for(int i = 0; token != NULL; token = strtok_r(NULL, " \t:\n\r", &save_pointer), i++) {
                 if(i == 0) {
                     // label
                 } else if(i % 2 == 1) {
-                    feature = strtol(token, NULL, 10);
+                    feature = token;
                 } else {
                     value = strtod(token, NULL);
-                    unordered_map<int, vector<Classifier> >::const_iterator found = classifiers->find(feature);
+                    unordered_map<string, vector<Classifier> >::const_iterator found = classifiers->find(feature);
                     if(found != classifiers->end()) {
                         for(vector<Classifier>::const_iterator classifier = (*found).second.begin(); classifier != (*found).second.end(); classifier++) {
                             for(int label = 0; label < num_labels; label++) {
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     int num_labels = 0;
-    unordered_map<int, vector<Classifier> > classifiers;
+    unordered_map<string, vector<Classifier> > classifiers;
     vector<string> labels;
     FILE* model = fopen(argv[1], "r");
     if(model == NULL) {
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
             num_labels = labels.size();
             state = 1;
         } else if(state == 1) {
-            classifier.feature = strtol(values[1], NULL, 10);
+            classifier.feature = values[1];
             classifier.threshold = strtod(values[2], NULL);
             state = 2;
         } else if(state == 2) {
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
             state = 4;
         } else if(state == 4) {
             for(int label = 0; label < num_labels; label++) classifier.weight[label][2] = strtod(values[label], NULL);
-            unordered_map<int, vector<Classifier> >::iterator found = classifiers.find(classifier.feature);
+            unordered_map<string, vector<Classifier> >::iterator found = classifiers.find(classifier.feature);
             if(found == classifiers.end()) {
                 classifiers[classifier.feature] = vector<Classifier>();
             }
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
     }
     fclose(model);
     double default_score[num_labels];
-    for(unordered_map<int, vector<Classifier> >::iterator item = classifiers.begin(); item != classifiers.end(); item++) {
+    for(unordered_map<string, vector<Classifier> >::iterator item = classifiers.begin(); item != classifiers.end(); item++) {
         for(vector<Classifier>::iterator classifier = (*item).second.begin(); classifier != (*item).second.end(); classifier++) {
             for(int label = 0; label < num_labels; label++) {
                 default_score[label] += (*classifier).weight[label][0];
