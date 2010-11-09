@@ -61,6 +61,10 @@ public:
         for(unsigned int line = range.begin(); line != range.end(); line++) {
             char* save_pointer = NULL;
             char* token = strtok_r((*lines)[line], " \t:\n\r", &save_pointer);
+            if(token == NULL || token[0] == '\0') {
+                output[line] = -1;
+                continue;
+            }
             double score[num_labels];
             memcpy(score, default_score, sizeof(double) * num_labels);
             string feature;
@@ -182,7 +186,8 @@ int main(int argc, char** argv) {
     ExampleProcessor processor(num_labels, &classifiers, default_score, &lines, output);
     parallel_for(blocked_range<unsigned int>(0, lines.size()), processor, auto_partitioner());
     for(unsigned int line = 0 ; line < lines.size(); line++) {
-        fprintf(stdout, "%s\n", labels[output[line]].c_str());
+        if(output[line] == -1) fprintf(stdout, "\n"); // pass empty lines as is
+        else fprintf(stdout, "%s\n", labels[output[line]].c_str());
         free(lines[line]);
     }
     return 0;

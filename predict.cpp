@@ -110,6 +110,10 @@ int main(int argc, char** argv) {
             if(fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin) == NULL) break;
         }
         char* token = strtok(buffer, " \t:\n\r");
+        if(token == NULL || token[0] == '\0') { // pass empty lines as is
+            fprintf(stdout, "\n");
+            continue;
+        }
         double score[num_labels];
         memcpy(score, default_score, sizeof(score));
         string feature;

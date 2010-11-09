@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
             if(NULL == fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin)) break;
         }
         char* token = strtok(buffer, " \t:\n\r");
-        if(token[0] == '\0') continue;
+        if(token == NULL || token[0] == '\0') continue; // skip empty lines
         int i;
         int label = 0;
         string name;
