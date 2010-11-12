@@ -103,13 +103,15 @@ int main(int argc, char** argv) {
             }
         }
     }
+    int line_num = 0;
     while(NULL != fgets(buffer, buffer_size, stdin)) {
         while(buffer[strlen(buffer) - 1] != '\n') {
             buffer_size *= 2;
             buffer = (char*) realloc(buffer, buffer_size);
             if(fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin) == NULL) break;
         }
-        char* token = strtok(buffer, " \t:\n\r");
+        line_num ++;
+        char* token = strtok(buffer, " \t\n\r");
         if(token == NULL || token[0] == '\0') { // pass empty lines as is
             fprintf(stdout, "\n");
             continue;
@@ -118,13 +120,18 @@ int main(int argc, char** argv) {
         memcpy(score, default_score, sizeof(score));
         string feature;
         double value = 0;
-        for(int i = 0; token != NULL; token = strtok(NULL, " \t:\n\r"), i++) {
+        for(int i = 0; token != NULL; token = strtok(NULL, " \t\n\r"), i++) {
             if(i == 0) {
                 // label
-            } else if(i % 2 == 1) {
-                feature = token;
             } else {
-                value = strtod(token, NULL);
+                char* end = strrchr(token, ':');
+                if(end == NULL) {
+                    fprintf(stderr, "ERROR: unexpected feature format \"%s\", line %d\n", token, line_num);
+                    exit(1);
+                }
+                *end = '\0';
+                feature = token;
+                value = strtod(end + 1, NULL);
                 unordered_map<string, vector<Classifier> >::iterator found = classifiers.find(feature);
                 if(found != classifiers.end()) {
                     for(vector<Classifier>::iterator classifier = (*found).second.begin(); classifier != (*found).second.end(); classifier++) {

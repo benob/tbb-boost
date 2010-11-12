@@ -60,7 +60,7 @@ public:
         //fprintf(stderr, "%d %d\n", range.begin(), range.end());
         for(unsigned int line = range.begin(); line != range.end(); line++) {
             char* save_pointer = NULL;
-            char* token = strtok_r((*lines)[line], " \t:\n\r", &save_pointer);
+            char* token = strtok_r((*lines)[line], " \t\n\r", &save_pointer);
             if(token == NULL || token[0] == '\0') {
                 output[line] = -1;
                 continue;
@@ -69,13 +69,18 @@ public:
             memcpy(score, default_score, sizeof(double) * num_labels);
             string feature;
             double value = 0;
-            for(int i = 0; token != NULL; token = strtok_r(NULL, " \t:\n\r", &save_pointer), i++) {
+            for(int i = 0; token != NULL; token = strtok_r(NULL, " \t\n\r", &save_pointer), i++) {
                 if(i == 0) {
                     // label
-                } else if(i % 2 == 1) {
-                    feature = token;
                 } else {
-                    value = strtod(token, NULL);
+                    char* end = strrchr(token, ':');
+                    if(end == NULL) {
+                        fprintf(stderr, "ERROR: unexpected feature format \"%s\", line %d\n", token, line + 1);
+                        exit(1);
+                    }
+                    *end = '\0';
+                    feature = token;
+                    value = strtod(end + 1, NULL);
                     unordered_map<string, vector<Classifier> >::const_iterator found = classifiers->find(feature);
                     if(found != classifiers->end()) {
                         for(vector<Classifier>::const_iterator classifier = (*found).second.begin(); classifier != (*found).second.end(); classifier++) {

@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
     int num_labels = 0;
     int buffer_size = 1024;
     char* buffer = (char*) malloc(buffer_size);
+    int line_num = 0;
     // read examples
     while(NULL != fgets(buffer, buffer_size, stdin)) {
         while(buffer[strlen(buffer) - 1] != '\n') {
@@ -78,13 +79,14 @@ int main(int argc, char** argv) {
             buffer = (char*) realloc(buffer, buffer_size);
             if(NULL == fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin)) break;
         }
-        char* token = strtok(buffer, " \t:\n\r");
+        line_num ++;
+        char* token = strtok(buffer, " \t\n\r");
         if(token == NULL || token[0] == '\0') continue; // skip empty lines
         int i;
         int label = 0;
         string name;
         double value;
-        for(i = 0; token != NULL; token = strtok(NULL, " \t:\n\r"), i++) {
+        for(i = 0; token != NULL; token = strtok(NULL, " \t\n\r"), i++) {
             if(i == 0) {
                 string label_str(token);
                 unordered_map<string, int>::iterator found = labels.find(label_str);
@@ -95,10 +97,15 @@ int main(int argc, char** argv) {
                     label = (*found).second;
                 }
                 if(label >= num_labels) num_labels = label + 1;
-            } else if(i % 2 == 1) {
-                name = token;
             } else {
-                value = strtod(token, NULL);
+                char* end = strrchr(token, ':');
+                if(end == NULL) {
+                    fprintf(stderr, "ERROR: unexpected feature format \"%s\", line %d\n", token, line_num);
+                    exit(1);
+                }
+                *end = '\0';
+                name = token;
+                value = strtod(end + 1, NULL);
                 unordered_map<string, int>::iterator found = feature_map.find(name);
                 if(found == feature_map.end()) {
                     Feature feature;
