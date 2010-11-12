@@ -224,6 +224,7 @@ int main(int argc, char** argv) {
         for(int label = 0; label < num_labels; label ++) fprintf(stdout, "%g ", classifier[label][1]); fprintf(stdout, "\n");
         for(int label = 0; label < num_labels; label ++) fprintf(stdout, "%g ", classifier[label][2]); fprintf(stdout, "\n");
         fprintf(stdout, "\n");
+        fflush(stdout);
         // apply classifier and update weights
         Feature feature = features[argmin];
         unordered_set<int32_t> known_value;
