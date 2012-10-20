@@ -45,17 +45,12 @@ int main(int argc, char** argv) {
         perror("Error loading model");
         exit(2);
     }
-    int buffer_size = 1024;
-    char* buffer = (char*) malloc(buffer_size);
+    size_t buffer_size = 0;
+    char* buffer = NULL;
     // read model
     Classifier classifier;
     int state = 0;
-    while(NULL != fgets(buffer, buffer_size, model)) {
-        while(buffer[strlen(buffer) - 1] != '\n') {
-            buffer_size *= 2;
-            buffer = (char*) realloc(buffer, buffer_size);
-            if(fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin) == NULL) break;
-        }
+    while(-1 != getline(&buffer, &buffer_size, model)) {
         char* token = strtok(buffer, " \t:\n\r");
         vector<const char*> values;
         for(;token != NULL; token = strtok(NULL, " \t:\n\r")) {
@@ -104,12 +99,7 @@ int main(int argc, char** argv) {
         }
     }
     int line_num = 0;
-    while(NULL != fgets(buffer, buffer_size, stdin)) {
-        while(buffer[strlen(buffer) - 1] != '\n') {
-            buffer_size *= 2;
-            buffer = (char*) realloc(buffer, buffer_size);
-            if(fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin) == NULL) break;
-        }
+    while(-1 != getline(&buffer, &buffer_size, stdin)) {
         line_num ++;
         char* token = strtok(buffer, " \t\n\r");
         if(token == NULL || token[0] == '\0') { // pass empty lines as is

@@ -69,16 +69,11 @@ int main(int argc, char** argv) {
     vector<Feature> features;
     unordered_map<string, int> labels;
     int num_labels = 0;
-    int buffer_size = 1024;
-    char* buffer = (char*) malloc(buffer_size);
+    size_t buffer_size = 0;
+    char* buffer = NULL;
     int line_num = 0;
     // read examples
-    while(NULL != fgets(buffer, buffer_size, stdin)) {
-        while(buffer[strlen(buffer) - 1] != '\n') {
-            buffer_size *= 2;
-            buffer = (char*) realloc(buffer, buffer_size);
-            if(NULL == fgets(buffer + strlen(buffer), buffer_size - strlen(buffer), stdin)) break;
-        }
+    while(-1 != getline(&buffer, &buffer_size, stdin)) {
         line_num ++;
         char* token = strtok(buffer, " \t\n\r");
         if(token == NULL || token[0] == '\0') continue; // skip empty lines
